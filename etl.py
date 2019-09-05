@@ -143,14 +143,14 @@ def main():
     # process_song_data(spark, input_data, output_data)
     # process_log_data(spark, log_input_data, output_data, input_data)
 
-    spark.textFile(r'C:\workspace\dend_capstone\years-of-crypto-data-master\bitcoin\New York')
+    spark.textFile(r'years-of-crypto-data-master\bitcoin\New York')
 
 def calc_sentiment(some_text):
     blob = TextBlob(some_text, analyzer=NaiveBayesAnalyzer())
     return blob.sentiment
 
 def process_tweets(spark_session):
-    FOLDER_PATH = r'C:\workspace\dend_capstone\years-of-crypto-data-master\bitcoin\New York'
+    FOLDER_PATH = r'years-of-crypto-data-master\bitcoin\New York'
 
     for filename in os.listdir(FOLDER_PATH):
         # Get tweets for current date
@@ -171,7 +171,7 @@ def process_tweets(spark_session):
         filtered_tweets_df['p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
 
 def process_historical_prices(spark_session):
-    COINBASE_HIST_PRICES = r'C:\workspace\dend_capstone\bitcoin-historical-data\coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
+    COINBASE_HIST_PRICES = r'bitcoin-historical-data\coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
 
     # Read in prices
     coinbase_hist_prices_df = spark_session.read.csv(COINBASE_HIST_PRICES, header=True)
@@ -181,6 +181,7 @@ def process_historical_prices(spark_session):
     coinbase_hist_prices_df = coinbase_hist_prices_df.withColumn('timestamp_final', F.col("Timestamp").cast("int").cast('timestamp'))
 
     #
+
 
 def main2():
     spark = create_spark_session()
