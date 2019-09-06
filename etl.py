@@ -149,8 +149,10 @@ def calc_sentiment(some_text):
     blob = TextBlob(some_text, analyzer=NaiveBayesAnalyzer())
     return blob.sentiment
 
-def process_tweets(spark_session):
+def process_tweets():
     FOLDER_PATH = r'years-of-crypto-data-master\bitcoin\New York'
+
+    final_df = pd.DataFrame()
 
     for filename in os.listdir(FOLDER_PATH):
         # Get tweets for current date
@@ -169,6 +171,15 @@ def process_tweets(spark_session):
         filtered_tweets_df['classification'] = filtered_tweets_df['sentiment'].apply(lambda x: x.classification)
         filtered_tweets_df['p_pos'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_pos)
         filtered_tweets_df['p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
+
+        # Weight and classification
+        filtered_tweets_df['weight'] = filtered_tweets_df.apply(lambda x: -1 * x['retweet']
+                                                                if x['classification'] == 'neg'
+                                                                else x['retweet'], axis=1)
+
+        final_df = pd.concat([final_df, filtered_tweets_df])
+
+    return final_df
 
 def process_historical_prices(spark_session):
     COINBASE_HIST_PRICES = r'bitcoin-historical-data\coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
@@ -211,11 +222,8 @@ def process_historical_prices(spark_session):
 def main2():
     spark = create_spark_session()
 
-    # process_tweets()
-    process_historical_prices(spark)
-
-
-
+    process_tweets()
+    # process_historical_prices(spark)
 
 if __name__ == "__main__":
     # main()
