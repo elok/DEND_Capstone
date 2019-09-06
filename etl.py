@@ -177,11 +177,36 @@ def process_historical_prices(spark_session):
     coinbase_hist_prices_df = spark_session.read.csv(COINBASE_HIST_PRICES, header=True)
     # coinbase_hist_prices_df = pd.read_csv(COINBASE_HIST_PRICES, engine='python')
 
-    # Format dates
-    coinbase_hist_prices_df = coinbase_hist_prices_df.withColumn('timestamp_final', F.col("Timestamp").cast("int").cast('timestamp'))
+    # Format timestamp
+    coinbase_hist_prices_df = coinbase_hist_prices_df.withColumn('timestamp_final',
+                                                                 F.col("Timestamp").cast("int").cast('timestamp'))
+    # Format date
+    coinbase_hist_prices_df = coinbase_hist_prices_df.withColumn('date', F.to_date('timestamp_final'))
 
-    #
+    # Filter out where there is no Close price
+    coinbase_hist_prices_df_filtered = coinbase_hist_prices_df.where(~F.isnan(F.col("Close")))
 
+    # Create temp SQL table
+    coinbase_hist_prices_df_filtered.createOrReplaceTempView("table1")
+
+    # Get closing price per day
+    coinbase_hist_prices_df_cob = spark_session.sql("select Close as close, table1.date \
+        from table1 \
+        join ( select table1.date, max(timestamp_final) as max_timestamp \
+                from table1 \
+                group by date ) temp ON table1.timestamp_final = temp.max_timestamp")
+
+    # Order by date
+    coinbase_hist_prices_df_cob = coinbase_hist_prices_df_cob.orderBy(coinbase_hist_prices_df_cob.date)
+
+    # Convert to Pandas dataframe
+    hist_prices_df = coinbase_hist_prices_df_cob.toPandas()
+    # Convert price to float
+    hist_prices_df['close'] = hist_prices_df['close'].astype(float)
+    # Calc returns
+    hist_prices_df['returns'] = (hist_prices_df['close'] - hist_prices_df.shift(1)['close']) / hist_prices_df['close']
+
+    return hist_prices_df
 
 def main2():
     spark = create_spark_session()
