@@ -25,6 +25,13 @@ Twitter Parsed Cryptocurrencies Data<br>
 Parsed crypto tags from twitter<br>
 https://www.kaggle.com/johnyleebrown/twitter-parsed-cryptocurrencies-data
 
+Data Scrubbing:
+  * Rows with missing CLOSE price was dropped
+  * To remove 'insignificant' tweets, any tweet with less than 50 retweets were dropped
+  * Files with bad symbols and data that could not be parsed were skipped. I can do better here by trying to figure out if the columns were shifted out of place.
+  * All dates and timestamps are converted to datatime to ensure a legitimate date.
+  * Rows with missing number of RETWEETS were dropped
+
 --------------------------------------------
 
 ## Libraries

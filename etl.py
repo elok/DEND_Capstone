@@ -111,7 +111,6 @@ def process_historical_prices(spark_session):
 
     # Read in prices
     coinbase_hist_prices_df = spark_session.read.csv(COINBASE_HIST_PRICES, header=True)
-    # coinbase_hist_prices_df = pd.read_csv(COINBASE_HIST_PRICES, engine='python')
 
     # Format timestamp
     coinbase_hist_prices_df = coinbase_hist_prices_df.withColumn('timestamp_final',
