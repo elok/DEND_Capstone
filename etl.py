@@ -6,23 +6,17 @@ from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, dat
 from pyspark.sql.types import TimestampType, DateType
 import pyspark.sql.functions as F
 import pandas as pd
-from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 import time
 from textblob import Blobber
 import traceback
 
-# Read credentials from config file
-# config = configparser.ConfigParser()
-# config.read('dl.cfg')
-#
-# os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
-# os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
 
 def create_spark_session():
     """
-    Return spark session
-    Initiate a spark session on AWS hadoop
+    Return spark session. Initiate a spark session on AWS hadoop.
+
+    :return: spark session
     """
     spark = SparkSession \
         .builder \
@@ -31,10 +25,25 @@ def create_spark_session():
 
     return spark
 
+
 def calc_sentiment(text_blobber, some_text):
+    """
+    Given an instantiate TextBlob and a tweet, calculate the sentiment
+
+    :param text_blobber: instantiated TextBlob
+    :param some_text: a twitter tweet
+    :return: calculated TextBlob sentiment object
+    """
     return text_blobber(some_text).sentiment
 
+
 def process_tweets():
+    """
+    Given a folder of csv files by date of tweets, process each one and calculate the sentiment using TextBlob.
+    Aggregate the data and return the final dataframe.
+
+    :return: dataframe of daily calculate sentiment
+    """
     FOLDER_PATH = r'years-of-crypto-data-master/bitcoin/New York'
 
     text_blobber = Blobber(analyzer=NaiveBayesAnalyzer())
@@ -53,26 +62,29 @@ def process_tweets():
 
             # Format timestamp
             try:
-                tweets_df['tweet_timestamp'] = tweets_df['timestamp'].apply(
+                tweets_df.loc[:, 'tweet_timestamp'] = tweets_df['timestamp'].apply(
                     lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S +0000 %Y'))
             except:
                 import traceback
                 print(traceback.format_exc())
 
             # Format date
-            tweets_df['tweet_date'] = tweets_df['tweet_timestamp'].apply(lambda x: datetime(x.year, x.month, x.day))
+            tweets_df.loc[:, 'tweet_date'] = tweets_df['tweet_timestamp'].apply(
+                lambda x: datetime(x.year, x.month, x.day))
 
             # Filter by retweets
             filtered_tweets_df = tweets_df[tweets_df.retweet >= 50]
 
             # Compute sentiment
-            filtered_tweets_df['sentiment'] = filtered_tweets_df['tweet'].apply(lambda x: calc_sentiment(text_blobber, x))
-            filtered_tweets_df['classification'] = filtered_tweets_df['sentiment'].apply(lambda x: x.classification)
-            filtered_tweets_df['p_pos'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_pos)
-            filtered_tweets_df['p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
+            filtered_tweets_df.loc[:, 'sentiment'] = filtered_tweets_df['tweet'].apply(
+                lambda x: calc_sentiment(text_blobber, x))
+            filtered_tweets_df.loc[:, 'classification'] = filtered_tweets_df['sentiment'].apply(
+                lambda x: x.classification)
+            filtered_tweets_df.loc[:, 'p_pos'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_pos)
+            filtered_tweets_df.loc[:, 'p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
 
             # Weight and classification
-            filtered_tweets_df['weighted_sentiment'] = filtered_tweets_df.apply(lambda x: -1 * x['retweet']
+            filtered_tweets_df.loc[:, 'weighted_sentiment'] = filtered_tweets_df.apply(lambda x: -1 * x['retweet']
                                                                     if x['classification'] == 'neg'
                                                                     else x['retweet'], axis=1)
 
@@ -87,7 +99,14 @@ def process_tweets():
 
     return final_df
 
+
 def process_historical_prices(spark_session):
+    """
+    Take four years of bitcoin prices from coinbase and calculate the daily performance returns
+
+    :param spark_session:
+    :return: dataframe of bitcoin daily performance returns
+    """
     COINBASE_HIST_PRICES = r'bitcoin-historical-data/coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
 
     # Read in prices
@@ -125,7 +144,11 @@ def process_historical_prices(spark_session):
 
     return hist_prices_df
 
+
 def main():
+    """
+    The main function that drives all necessary processing.
+    """
     # Process tweets
     tweets_df = process_tweets()
 
@@ -143,6 +166,7 @@ def main():
 
     # Save output
     merged_df.to_csv('final.csv')
+
 
 if __name__ == "__main__":
     main()
