@@ -12,6 +12,16 @@ The analysis of the data can be done in many ways:
 * Use a combination of both positive and negative sentiments
 * Use number of retweets as some sort of weight indicator
 
+<b>Workflow: </b>
+  * Retrieve historical bitcoin prices
+     * Calculate 'close' price by looking for the latest timestamp of the day and keeping that price
+  * Retrieve historical tweets
+    * Drop any tweet with less than 50 retweets
+    * Calculate sentiment per tweet
+    * Calculate the weighted sentiment combining number of retweets and sentiment
+    * Aggregate all tweets per day by summing weighted sentiment
+  * Combined prices and sentiment by date
+
 --------------------------------------------
 
 ## Data Sets
