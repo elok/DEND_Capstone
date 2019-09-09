@@ -1,4 +1,3 @@
-import configparser
 from datetime import datetime
 import os
 from pyspark.sql import SparkSession
@@ -9,13 +8,16 @@ import pyspark.sql.functions as F
 import pandas as pd
 from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
+import time
+from textblob import Blobber
+import traceback
 
 # Read credentials from config file
-config = configparser.ConfigParser()
-config.read('dl.cfg')
-
-os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
-os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
+# config = configparser.ConfigParser()
+# config.read('dl.cfg')
+#
+# os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
+# os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
 
 def create_spark_session():
     """
@@ -29,47 +31,64 @@ def create_spark_session():
 
     return spark
 
-def calc_sentiment(some_text):
-    blob = TextBlob(some_text, analyzer=NaiveBayesAnalyzer())
-    return blob.sentiment
+def calc_sentiment(text_blobber, some_text):
+    return text_blobber(some_text).sentiment
 
 def process_tweets():
-    FOLDER_PATH = r'years-of-crypto-data-master\bitcoin\New York'
+    FOLDER_PATH = r'years-of-crypto-data-master/bitcoin/New York'
+
+    text_blobber = Blobber(analyzer=NaiveBayesAnalyzer())
 
     final_df = pd.DataFrame()
 
     for filename in os.listdir(FOLDER_PATH):
+        print(filename)
+
         # Get tweets for current date
-        tweets_df = pd.read_csv(os.path.join(FOLDER_PATH, filename), names=['timestamp', 'tweet', 'retweet'])
+        try:
+            tweets_df = pd.read_csv(os.path.join(FOLDER_PATH, filename), names=['timestamp', 'tweet', 'retweet'])
 
-        # Save the dates
-        tweets_df['tweet_timestamp'] = tweets_df['timestamp'].apply(
-            lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S +0000 %Y'))
-        tweets_df['tweet_date'] = tweets_df['tweet_timestamp'].apply(lambda x: datetime(x.year, x.month, x.day))
+            # Filter bad data
+            tweets_df = tweets_df.dropna(subset=['retweet'])
 
-        # Filter by retweets
-        filtered_tweets_df = tweets_df[tweets_df.retweet >= 50]
+            # Format timestamp
+            try:
+                tweets_df['tweet_timestamp'] = tweets_df['timestamp'].apply(
+                    lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S +0000 %Y'))
+            except:
+                import traceback
+                print(traceback.format_exc())
 
-        # Compute sentiment
-        filtered_tweets_df['sentiment'] = filtered_tweets_df['tweet'].apply(lambda x: calc_sentiment(x))
-        filtered_tweets_df['classification'] = filtered_tweets_df['sentiment'].apply(lambda x: x.classification)
-        filtered_tweets_df['p_pos'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_pos)
-        filtered_tweets_df['p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
+            # Format date
+            tweets_df['tweet_date'] = tweets_df['tweet_timestamp'].apply(lambda x: datetime(x.year, x.month, x.day))
 
-        # Weight and classification
-        filtered_tweets_df['weight'] = filtered_tweets_df.apply(lambda x: -1 * x['retweet']
-                                                                if x['classification'] == 'neg'
-                                                                else x['retweet'], axis=1)
+            # Filter by retweets
+            filtered_tweets_df = tweets_df[tweets_df.retweet >= 50]
 
-        final_df = pd.concat([final_df, filtered_tweets_df])
+            # Compute sentiment
+            filtered_tweets_df['sentiment'] = filtered_tweets_df['tweet'].apply(lambda x: calc_sentiment(text_blobber, x))
+            filtered_tweets_df['classification'] = filtered_tweets_df['sentiment'].apply(lambda x: x.classification)
+            filtered_tweets_df['p_pos'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_pos)
+            filtered_tweets_df['p_neg'] = filtered_tweets_df['sentiment'].apply(lambda x: x.p_neg)
 
-        # HACK
-        return final_df
+            # Weight and classification
+            filtered_tweets_df['weighted_sentiment'] = filtered_tweets_df.apply(lambda x: -1 * x['retweet']
+                                                                    if x['classification'] == 'neg'
+                                                                    else x['retweet'], axis=1)
 
-    # return final_df
+            # Combine sentiment weights by date
+            weighted_sentiment_df = filtered_tweets_df.groupby(['tweet_date']).sum()
+        except:
+            # print(traceback.format_exc())
+            print('skipping {}'.format(filename))
+            continue
+
+        final_df = pd.concat([final_df, weighted_sentiment_df])
+
+    return final_df
 
 def process_historical_prices(spark_session):
-    COINBASE_HIST_PRICES = r'bitcoin-historical-data\coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
+    COINBASE_HIST_PRICES = r'bitcoin-historical-data/coinbaseUSD_1-min_data_2014-12-01_to_2019-01-09.csv'
 
     # Read in prices
     coinbase_hist_prices_df = spark_session.read.csv(COINBASE_HIST_PRICES, header=True)
@@ -106,21 +125,23 @@ def process_historical_prices(spark_session):
 
     return hist_prices_df
 
-def analyze_tweets_and_prices(hist_prices_df, tweets_df):
-    pass
-
 def main():
-    spark = create_spark_session()
-
-    # Process historical prices
-    hist_prices_df = process_historical_prices(spark)
-
     # Process tweets
     tweets_df = process_tweets()
 
-    # Combine and analyze data
-    analyze_tweets_and_prices(hist_prices_df, tweets_df)
+    # Process historical prices
+    spark = create_spark_session()
+    start_time = time.time()
+    hist_prices_df = process_historical_prices(spark)
+    print('process_historical_prices: {}'.format(time.time() - start_time))
 
+    # Combine historical prices and tweets
+    # We shift the tweets because we want to compare T-1 tweet sentiment with
+    merged_df = hist_prices_df.set_index('date').join(tweets_df.reset_index().set_index('tweet_date').shift(1),
+                                                      how='inner')
+
+    # Save output
+    merged_df.to_csv('final.csv')
 
 if __name__ == "__main__":
     main()

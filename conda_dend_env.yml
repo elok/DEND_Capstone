@@ -15,7 +15,6 @@ dependencies:
     - pymongo==3.4.0
     - PyYAML==3.12
     - pandas==0.22.0
-    - pywin32==220
     - beautifulsoup4==4.6.0
     - celery==4.1.0
     - CherryPy==14.0.0

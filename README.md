@@ -3,27 +3,25 @@
 ## Project Description
 This is the capstone project for the Udacity Data Engineering Nanodegree. 
 
-I have chosen the open ended project option and will and in this project, I will apply what you've learned on Spark and data lakes to build an ETL pipeline. To complete the project, I retrieved two datasets from Kaggle on Bitcoin, process the data into analytics tables using Spark, and output them into parquet files.
-
-CSV > SPARK > PARQUET?
+I have chosen the open ended project option and in this project, I will apply what I've learned on Spark and data lakes to build an ETL pipeline. To complete the project, I retrieved two datasets from Kaggle on Bitcoin, process the data into analytics tables using Spark, and output them to csv files.
 
 --------------------------------------------
 
 ## Data Sets
 There are two datasets that I used from Kaggle:
 
-Bitcoin Historical Data
-Bitcoin data at 1-min intervals from select exchanges, Jan 2012 to August 2019
+Bitcoin Historical Data<br>
+Bitcoin data at 1-min intervals from select exchanges, Jan 2012 to August 2019<br>
 https://www.kaggle.com/mczielinski/bitcoin-historical-data
 
-Twitter Parsed Cryptocurrencies Data
-Parsed crypto tags from twitter
+Twitter Parsed Cryptocurrencies Data<br>
+Parsed crypto tags from twitter<br>
 https://www.kaggle.com/johnyleebrown/twitter-parsed-cryptocurrencies-data
 
 --------------------------------------------
 
 ## Analytics tables
-Using the song and log datasets, I created a star schema optimized for queries on song play analysis. This includes the following tables.
+Using the bitcoin twitter and price datasets, I created a star schema optimized for queries on song play analysis. This includes the following tables.
 
 #### Fact Table
 
