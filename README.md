@@ -60,12 +60,12 @@ Using the bitcoin twitter and price datasets, the idea is to create a star schem
 
 #### Dimension Tables
 
-* price_returns - table daily price performance
+* <b>price_returns</b> - table daily price performance
   * close - the closing end of day price
   * date - the date of the close price
   * returns - the percent difference between today's price and yesterday's price (T - T-1) / T
 
-* twitter_sentiment - table of summarized daily twitter sentiments
+* <b>twitter_sentiment</b> - table of summarized daily twitter sentiments
   * date - the date of the summarized twitter sentiments
   * retweet - the number of retweets a current tweet has
   * p_pos - the sum of all positive sentiment calculated by TextBlob across all tweets for that date
@@ -74,7 +74,7 @@ Using the bitcoin twitter and price datasets, the idea is to create a star schem
 
 #### Fact Table
 
-* returns_sentiment - daily price performance with the twitter sentiment from the previous day
+* <b>returns_sentiment</b> - daily price performance with the twitter sentiment from the previous day
   * date - the date of the price performance
   * close - the closing end of day price
   * returns - the percent difference between today's price and yesterday's price (T - T-1) / T
