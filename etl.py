@@ -136,7 +136,8 @@ def main():
     print('process_historical_prices: {}'.format(time.time() - start_time))
 
     # Combine historical prices and tweets
-    # We shift the tweets because we want to compare T-1 tweet sentiment with
+    # We shift the tweets because we want to compare T-1 tweet sentiment with T price. The idea is that you will buy
+    # or sell using T-1 sentiment on T so we need to compare T price/performance.
     merged_df = hist_prices_df.set_index('date').join(tweets_df.reset_index().set_index('tweet_date').shift(1),
                                                       how='inner')
 
